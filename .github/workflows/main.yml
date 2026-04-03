@@ -32,48 +32,60 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          submodules: recursive # 必须添加，ZLMediaKit 强依赖子模块
+          submodules: recursive   # 拉取 ZLMediaKit 子模块（ZLToolKit）
 
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev xsltproc wget unzip qemu-utils
+          sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev xsltproc wget unzip qemu-utils file
 
       - name: Download and Setup SDK
         run: |
           SDK_URL="https://downloads.openwrt.org/releases/23.05.5/targets/${{ matrix.target }}/${{ matrix.subtarget }}/"
-          SDK_FILE=$(wget -qO- $SDK_URL | grep -oE "openwrt-sdk-[^>]*Linux-x86_64.tar.xz" | head -n 1)
-          wget -q "${SDK_URL}${SDK_FILE}"
-          echo "正在解压: $SDK_FILE"
-          tar -xJf *.tar.xz
+          # 更可靠的方式：直接使用已知的 SDK 文件名模板
+          SDK_FILE="openwrt-sdk-23.05.5-${{ matrix.target }}-${{ matrix.subtarget }}_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          wget -q "${SDK_URL}${SDK_FILE}" || {
+            # 如果模板失败，回退到解析 HTML
+            SDK_FILE=$(wget -qO- $SDK_URL | grep -oE "openwrt-sdk-[^>]*Linux-x86_64.tar.xz" | head -n 1)
+            wget -q "${SDK_URL}${SDK_FILE}"
+          }
+          tar -xJf "$SDK_FILE"
           SDK_DIR=$(find . -maxdepth 1 -type d -name "openwrt-sdk-*" | head -n 1)
           mv "$SDK_DIR" openwrt-sdk
 
       - name: Compile Package
         run: |
           cd openwrt-sdk
+          
           # 1. 创建包目录
           mkdir -p package/zlmediakit
-          # 2. 拷贝 Makefile
+          
+          # 2. 拷贝 Makefile（确保包含 -DENABLE_BACKTRACE=OFF 等选项）
           cp ../Makefile package/zlmediakit/Makefile
-          # 3. 准备源码（如果是通过本地源码编译逻辑）
-          # 注意：如果在 Makefile 里写了 PKG_SOURCE_PROTO:=git，这一步其实可以省略
-          mkdir -p package/zlmediakit/src
-          cp -r ../* package/zlmediakit/src/ 2>/dev/null || true
           
-          # 4. 更新 feeds 并安装依赖库的源代码
+          # 3. 不需要手动拷贝源码，让 OpenWrt 通过 PKG_SOURCE_PROTO:=git 自动拉取
+          #    （Makefile 中已设置 PKG_SOURCE_URL 和 PKG_SOURCE_SUBMODULES=1）
+          
+          # 4. 更新 feeds 并安装依赖（只安装真正需要的）
           ./scripts/feeds update -a
-          ./scripts/feeds install libopenssl zlib libstdcpp libsrtp2
+          ./scripts/feeds install libopenssl zlib libstdcpp
           
+          # 5. 配置内核和依赖选项
           make defconfig
-          # 仅编译 ZLMediaKit 及其依赖
+          # 强制开启所需的依赖库（如果尚未选中）
+          echo "CONFIG_PACKAGE_libopenssl=y" >> .config
+          echo "CONFIG_PACKAGE_zlib=y" >> .config
+          echo "CONFIG_PACKAGE_libstdcpp=y" >> .config
+          make oldconfig
+          
+          # 6. 编译 ZLMediaKit
           make package/zlmediakit/compile V=s -j$(nproc)
 
       - name: Organize Artifacts
         run: |
           mkdir -p ./deploy
-          # 注意：find 命令的搜索路径取决于 SDK 的 bin 目录结构
-          find openwrt-sdk/bin/packages/ -name "zlmediakit*.ipk" -exec cp {} ./deploy/ \;
+          # 搜索 ipk 文件（OpenWrt 23.05 通常在 bin/packages/架构/包名/ 下）
+          find openwrt-sdk/bin -name "*.ipk" -exec cp {} ./deploy/ \;
           if [ -z "$(ls -A ./deploy)" ]; then
             echo "::error::No ipk files were produced!"
             exit 1
@@ -102,6 +114,11 @@ jobs:
           files: ./release-assets/*.ipk
           body: |
             ## ZLMediaKit 多架构自动编译版本
+            - **只转发，不转码** (FFmpeg 已禁用)
+            - **WebRTC 已禁用**
+            - **HLS 已禁用**
+            - **回溯功能已禁用** (修复 musl 编译错误)
+            
             架构列表：
             - mipsel_24kc (MT7621)
             - mips_24kc (Ath79)

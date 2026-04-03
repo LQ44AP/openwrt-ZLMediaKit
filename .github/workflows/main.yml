@@ -68,7 +68,7 @@ jobs:
           
           # 4. 更新 feeds 并安装依赖（只安装真正需要的）
           ./scripts/feeds update -a
-          ./scripts/feeds install libopenssl zlib libstdcpp
+          ./scripts/feeds install libopenssl libstdcpp libpthread
           
           # 5. 配置内核和依赖选项
           make defconfig

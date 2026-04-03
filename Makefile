@@ -28,7 +28,7 @@ CMAKE_OPTIONS += \
 	-DENABLE_WEBRTC=OFF \
 	-DENABLE_HLS=OFF \
 	-DENABLE_ASAN=OFF \
-	-DENABLE_FFMPEG=OFF
+	-DENABLE_FFMPEG=OFF \
 	-DENABLE_TESTS=OFF \
 	-DENABLE_SERVER=ON \
 	-DCMAKE_BUILD_TYPE=Release
@@ -36,7 +36,7 @@ CMAKE_OPTIONS += \
 define Package/zlmediakit/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_DIR) $(1)/etc/zlmediakit
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/release/linux/Release/MediaServer $(1)/usr/bin/ZLMediaServer
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/build/MediaServer $(1)/usr/bin/ZLMediaServer
 	$(INSTALL_CONF) $(PKG_BUILD_DIR)/conf/config.ini $(1)/etc/zlmediakit/config.ini
 endef
 

@@ -21,7 +21,7 @@ define Package/zlmediakit
   CATEGORY:=Network
   TITLE:=ZLMediaKit
   URL:=https://github.com/ZLMediaKit/ZLMediaKit
-  DEPENDS:=+libstdcpp +libopenssl +zlib +libsrtp2 +libuv
+  DEPENDS:=+libstdcpp +libopenssl +zlib +libsrtp2
 endef
 
 CMAKE_OPTIONS += \

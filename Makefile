@@ -42,7 +42,9 @@ CMAKE_OPTIONS += \
     -DENABLE_RTPPROXY=ON \
     -DENABLE_AV1=OFF \
     -DENABLE_WEBRTC=OFF \
-    -DENABLE_SRT=OFF
+    -DENABLE_SRT=OFF \
+    -DENABLE_MEM_CHECK=OFF \
+    -DCMAKE_CXX_FLAGS="-DENABLE_AV1=0"
 
 define Package/zlmediakit/install
 	$(INSTALL_DIR) $(1)/usr/bin

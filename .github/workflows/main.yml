@@ -61,7 +61,7 @@ jobs:
           mkdir -p package/zlmediakit
           
           # 2. 拷贝 Makefile（确保包含 -DENABLE_BACKTRACE=OFF 等选项）
-          cp ../Makefile package/zlmediakit/Makefile
+          cp -r Makefile files package/zlmediakit
           
           # 3. 不需要手动拷贝源码，让 OpenWrt 通过 PKG_SOURCE_PROTO:=git 自动拉取
           #    （Makefile 中已设置 PKG_SOURCE_URL 和 PKG_SOURCE_SUBMODULES=1）

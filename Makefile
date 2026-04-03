@@ -29,6 +29,7 @@ endef
 
 # 核心：通过 CMAKE_OPTIONS 禁用非必要模块
 CMAKE_OPTIONS += \
+    -DENABLE_API=OFF \
     -DENABLE_FFMPEG=OFF \
     -DENABLE_REPL=OFF \
     -DENABLE_WEBRTC=OFF \

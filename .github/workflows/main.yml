@@ -63,7 +63,7 @@ jobs:
           
           # 4. 更新 feeds 并安装依赖库的源代码
           ./scripts/feeds update -a
-          ./scripts/feeds install libopenssl zlib libstdcpp libsrtp2 libuv
+          ./scripts/feeds install libopenssl zlib libstdcpp libsrtp2
           
           make defconfig
           # 仅编译 ZLMediaKit 及其依赖

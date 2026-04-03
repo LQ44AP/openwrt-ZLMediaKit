@@ -1,0 +1,113 @@
+name: Build for Multiple Archs
+
+on:
+  push:
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write  
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 1. 小端序 MIPS (大多数联发科路由)
+          - arch: mipsel_24kc
+            target: ramips
+            subtarget: mt7621
+          # 2. 大端序 MIPS (高通/阿瑟罗路由)
+          - arch: mips_24kc
+            target: ath79
+            subtarget: generic
+          # 3. x86-64 (软路由/虚拟机)
+          - arch: x86_64
+            target: x86
+            subtarget: 64
+          # 4. ARM64 (树莓派4, 5 / 友善 NanoPi)
+          - arch: aarch64_generic
+            target: rockchip
+            subtarget: armv8
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses5-dev gawk git gettext libssl-dev xsltproc wget unzip qemu-utils
+
+      - name: Download and Setup SDK
+        run: |
+          # 动态匹配 SDK 下载地址
+          # 注意：x86 和 arm64 的命名规则可能略有不同，这里使用通配符匹配
+          SDK_URL="https://downloads.openwrt.org/releases/23.05.5/targets/${{ matrix.target }}/${{ matrix.subtarget }}/"
+          # 获取该目录下第一个 SDK 文件的全名
+          SDK_FILE=$(wget -qO- $SDK_URL | grep -oE "openwrt-sdk-[^>]*Linux-x86_64.tar.xz" | head -n 1)
+          wget -q "${SDK_URL}${SDK_FILE}"
+          
+          echo "正在解压: $SDK_FILE"
+          tar -xJf *.tar.xz
+          
+          SDK_DIR=$(find . -maxdepth 1 -type d -name "openwrt-sdk-*" | head -n 1)
+          mv "$SDK_DIR" openwrt-sdk
+
+          - name: Compile Package
+            run: |
+          cd openwrt-sdk
+
+          # 1. 创建包目录
+          mkdir -p package/zlmediakit
+
+          # 2. 拷贝 Makefile (假设它在你仓库根目录)
+          cp ../Makefile package/zlmediakit/Makefile
+
+          # 3. 拷贝源码 (Actions 已经拉取好的完整源码)
+          mkdir -p package/zlmediakit/src
+          cp -r ../* package/zlmediakit/src/ 2>/dev/null || true
+
+          # 4. 安装依赖并编译
+          ./scripts/feeds update -a
+          ./scripts/feeds install libopenssl zlib libstdcpp libsrtp2 libuv
+
+          make defconfig
+          make package/zlmediakit/compile V=s -j$(nproc)
+
+          - name: Organize Artifacts
+          run: |
+          mkdir -p ./deploy
+          # 直接复制原始 ipk 文件，保留版本号和架构信息
+          find openwrt-sdk/bin/packages/${{ matrix.arch }}/ -name "zlmediakit*.ipk" -exec cp {} ./deploy/ \;
+          # 如果没有任何 ipk 生成，则报错
+          if [ -z "$(ls -A ./deploy)" ]; then
+            echo "::error::No ipk files were produced!"
+            exit 1
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zlmediakit-${{ matrix.arch }}
+          path: ./deploy/*.ipk
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-assets
+          merge-multiple: true          # 将所有架构的 ipk 合并到同一目录
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./release-assets/*.ipk
+          body: |
+          generate_release_notes: false

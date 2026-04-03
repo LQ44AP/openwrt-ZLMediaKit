@@ -29,30 +29,25 @@ endef
 
 # 核心：通过 CMAKE_OPTIONS 禁用非必要模块
 CMAKE_OPTIONS += \
-    -DENABLE_HLS=ON \
-    -DENABLE_OPENSSL=ON \
     -DENABLE_FFMPEG=OFF \
     -DENABLE_REPL=OFF \
+    -DENABLE_WEBRTC=OFF \
+    -DENABLE_SRT=OFF \
+    -DENABLE_AV1=OFF \
     -DENABLE_CXX11=ON \
     -DENABLE_MYSQL=OFF \
     -DENABLE_FAAC=OFF \
     -DENABLE_X264=OFF \
     -DENABLE_OPUS=OFF \
     -DENABLE_MP4=OFF \
-    -DENABLE_RTPPROXY=ON \
-    -DENABLE_AV1=OFF \
-    -DENABLE_WEBRTC=OFF \
-    -DENABLE_SRT=OFF \
-    -DENABLE_MEM_CHECK=OFF \
-    -DCMAKE_CXX_FLAGS="-DENABLE_AV1=0"
+    -DENABLE_RTPPROXY=ON
 
 define Build/Prepare
 	$(call Build/Prepare/Default)
-	# 物理移除 AV1 相关代码，防止 ext-codec 模块扫描到它
-	rm -f $(PKG_BUILD_DIR)/ext-codec/AV1.h
-	rm -f $(PKG_BUILD_DIR)/ext-codec/AV1.cpp
-	# 创建一个空的 AV1.h 防止其他文件 include 时直接报错（可选）
-	touch $(PKG_BUILD_DIR)/ext-codec/AV1.h
+	# 核心操作：从主 CMake 配置文件中注释掉 ext-codec 目录
+	sed -i 's/add_subdirectory(ext-codec)//g' $(PKG_BUILD_DIR)/CMakeLists.txt
+	# 同时也可以删掉该目录确保安全
+	rm -rf $(PKG_BUILD_DIR)/ext-codec
 endef
 
 define Package/zlmediakit/install

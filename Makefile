@@ -46,6 +46,15 @@ CMAKE_OPTIONS += \
     -DENABLE_MEM_CHECK=OFF \
     -DCMAKE_CXX_FLAGS="-DENABLE_AV1=0"
 
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	# 物理移除 AV1 相关代码，防止 ext-codec 模块扫描到它
+	rm -f $(PKG_BUILD_DIR)/ext-codec/AV1.h
+	rm -f $(PKG_BUILD_DIR)/ext-codec/AV1.cpp
+	# 创建一个空的 AV1.h 防止其他文件 include 时直接报错（可选）
+	touch $(PKG_BUILD_DIR)/ext-codec/AV1.h
+endef
+
 define Package/zlmediakit/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/release/linux/$(PKG_NAME)/MediaServer $(1)/usr/bin/zlmediakit

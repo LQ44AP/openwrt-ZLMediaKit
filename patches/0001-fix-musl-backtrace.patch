@@ -1,0 +1,12 @@
+--- a/server/System.cpp
++++ b/server/System.cpp
+@@ -13,7 +13,9 @@
+ #include <sys/types.h>
+ #include <sys/wait.h>
+ #include <signal.h>
++#ifdef __GLIBC__
+ #include <execinfo.h>
++#endif
+ 
+ using namespace std;
+ using namespace toolkit;

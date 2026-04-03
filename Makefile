@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=zlmediakit
-PKG_VERSION:=master
+PKG_VERSION:=20260403
 PKG_RELEASE:=1
 
 # 指定源码来源
